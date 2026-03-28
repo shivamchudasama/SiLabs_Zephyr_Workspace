@@ -71,16 +71,25 @@ my-workspace/                   ← west topdir
        -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
    ```
 
-2. **Install tooling** per the
+2. **Install host tools via winget** per the
    [Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/develop/getting_started/index.html):
 
-   ```powershell
-   choco install cmake ninja gperf python3 git dtc-msys2 wget 7zip
+   ```
+   winget install Kitware.CMake Ninja-build.Ninja oss-winget.gperf Python.Python.3.12 Git.Git oss-winget.dtc wget 7zip.7zip
+   ```
+
+   Close and reopen your terminal after installing so the new tools are on PATH.
+
+3. **Install West and the Zephyr SDK** — the setup batch file handles this
+   automatically, or you can do it manually:
+
+   ```
    pip install west
    ```
 
-3. **Install the Zephyr SDK** from
-   [github.com/zephyrproject-rtos/sdk-ng/releases](https://github.com/zephyrproject-rtos/sdk-ng/releases).
+4. **Install the Zephyr SDK** from
+   [github.com/zephyrproject-rtos/sdk-ng/releases](https://github.com/zephyrproject-rtos/sdk-ng/releases),
+   or let `west sdk install` handle it (the batch file does this for you).
 
 ---
 
@@ -97,18 +106,27 @@ west init -l manifest
 # 3. Fetch Zephyr (SiLabs fork), modules, AND your app repo(s)
 west update
 
-# 4. Install Python dependencies
-pip install -r zephyr/scripts/requirements.txt
+# 4. Export the Zephyr CMake package
+west zephyr-export
 
-# 5. Download Silicon Labs BLE radio blobs
+# 5. Install Python dependencies
+cmd /c zephyr\scripts\utils\west-packages-pip-install.cmd
+
+# 6. Install the Zephyr SDK (ARM toolchain for EFR32)
+west sdk install -t arm-zephyr-eabi
+
+# 7. Download Silicon Labs BLE radio blobs
 west blobs fetch hal_silabs
 
-# 6. Build
+# 8. Build
 west build -b xg24_dk2601b silabs-ble-app
 
-# 7. Flash
+# 9. Flash
 west flash
 ```
+
+Or simply run `setup_zephyr_workspace.bat` as Administrator to do steps 1–7
+automatically.
 
 ---
 
@@ -135,8 +153,9 @@ west flash
    [SiliconLabsSoftware/zephyr-silabs/releases](https://github.com/SiliconLabsSoftware/zephyr-silabs/releases).
 2. Update the `revision:` under `zephyr-silabs` in `west.yml`.
 3. Run `west update`.
-4. Re-run `pip install -r zephyr/scripts/requirements.txt`.
-5. Re-run `west blobs fetch hal_silabs`.
+4. Run `west zephyr-export`.
+5. Re-run `cmd /c zephyr\scripts\utils\west-packages-pip-install.cmd`.
+6. Re-run `west blobs fetch hal_silabs`.
 
 ---
 
