@@ -62,9 +62,10 @@ manifest:
    # Each app is its own Git repo, cloned as a sibling directory.
    # West pins it at a specific revision for reproducible builds.
 
-      - name: silabs-ble-app
+      - name: SiLabs_Zephyr_KeyFob
         revision: main                       # Pin to a tag for releases
-        path: silabs-ble-app                 # Cloned here in the workspace
+        path: https://github.com/shivamchudasama/SiLabs_Zephyr_KeyFob
+                                             # Cloned here in the workspace
 
    # To add more projects, copy the block above:
    #
