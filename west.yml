@@ -37,14 +37,16 @@ manifest:
    version: "0.13"
 
    remotes:
-      - name: silabs
+      - name: silabs                         # Name of the remote, used in project entries below
+                                             # as a variable. 
         url-base: https://github.com/SiliconLabsSoftware
-      - name: shivam                         # Zephyr fork GIT URL
+                                             # SiLabs Zephyr fork GitHub URL.
+      - name: Shivam                         # Name of the remote for your own projects.
         url-base: https://github.com/shivamchudasama
-                                             # User GIT URL
+                                             # Own GitHub URL.
 
    defaults:
-      remote: shivam
+      remote: Shivam
 
    projects:
     # ────────────── Silicon Labs Simplicity SDK for Zephyr ──────────────
@@ -52,26 +54,22 @@ manifest:
     # fork of Zephyr, hal_silabs, mbedtls, and the other modules
     # needed for Silicon Labs targets — with non-SiLabs HALs
     # already filtered out.
-      - name: zephyr-silabs
-        remote: silabs
+      - name: zephyr-silabs                  # Silicon Labs' downstream manifest repo
+        remote: silabs                       # Use the "silabs" remote defined above
         revision: v2025.12.1                 # Latest stable release
         import: true                         # Import its manifest (west.yml)
-        path: zephyr-silabs
+        path: zephyr-silabs                  # Cloned here in the workspace
+                                             # (name of the folder in local machine)
 
    # ────────────── Your applications ──────────────
    # Each app is its own Git repo, cloned as a sibling directory.
    # West pins it at a specific revision for reproducible builds.
 
-      - name: SiLabs_Zephyr_KeyFob
-        revision: main                       # Pin to a tag for releases
-        path: https://github.com/shivamchudasama/SiLabs_Zephyr_KeyFob
-                                             # Cloned here in the workspace
-
-   # To add more projects, copy the block above:
-   #
-   # - name: my-sensor-app
-   #   revision: v1.0.0
-   #   path: my-sensor-app
+      - name: SiLabs_Zephyr_KeyFob           # Name of the project.
+        remote: Shivam                       # Use the "Shivam" remote defined above
+        revision: main                       # Pointing to required branch, tag, in the app repo
+        path: KeyFob_App                     # Cloned here in the workspace
+                                             # (name of the folder in local machine)
 
    self:
       path: manifest
