@@ -12,28 +12,27 @@ setlocal EnableDelayedExpansion
 ::    1. Enables Windows long-path support  (requires Administrator)
 ::    2. Installs host tools via winget     (cmake, ninja, python, git, etc.)
 ::    3. Installs West (Zephyr meta-tool)
-::    4. Clones the manifest repo and runs  west init / west update
+::    4. Copies the local manifest and runs  west init / west update
 ::    5. Exports the Zephyr CMake package
 ::    6. Installs Zephyr Python dependencies
 ::    7. Installs the Zephyr SDK            (via west sdk install)
 ::    8. Downloads Silicon Labs BLE radio blobs
 ::
 ::  Usage:
+::    Place this .bat file inside your manifest repo (next to west.yml).
 ::    Right-click this file → "Run as Administrator"
-::
-::    OR from an elevated command prompt:
-::      setup_zephyr_workspace.bat [workspace_path]
-::
-::    Default workspace path: %USERPROFILE%\zephyr-silabs-workspace
+::    The script will ask you for a workspace directory path.
 :: ============================================================================
 
 :: ── Configuration ──────────────────────────────────────────────────────────
-:: Change these to match your GitHub org / repo URLs.
 
-set "MANIFEST_REPO_URL=https://github.com/your-org/silabs-ble-manifest.git"
-set "WORKSPACE_DIR=%~1"
-if "%WORKSPACE_DIR%"=="" set "WORKSPACE_DIR=%USERPROFILE%\zephyr-silabs-workspace"
 set "BOARD=xg24_dk2601b"
+
+:: The manifest repo is THIS directory (where the .bat lives).
+:: Resolve it to an absolute path.
+set "MANIFEST_DIR=%~dp0"
+:: Remove trailing backslash
+if "%MANIFEST_DIR:~-1%"=="\" set "MANIFEST_DIR=%MANIFEST_DIR:~0,-1%"
 
 :: ── Labels ─────────────────────────────────────────────────────────────────
 set "INFO=[INFO]"
@@ -59,6 +58,29 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 echo %OK% Running with Administrator privileges.
+
+:: ── Ask for workspace directory ────────────────────────────────────────────
+echo.
+echo   The workspace directory is where Zephyr, modules, and your app
+echo   repos will be downloaded. Keep the path SHORT and without spaces
+echo   to avoid build issues.
+echo.
+set /p "WORKSPACE_DIR=   Enter workspace path (e.g. C:\zephyr-ws): "
+
+if "%WORKSPACE_DIR%"=="" (
+    echo %FAIL% Workspace path cannot be empty.
+    pause
+    exit /b 1
+)
+
+:: Remove any surrounding quotes the user may have typed
+set "WORKSPACE_DIR=%WORKSPACE_DIR:"=%"
+
+:: Remove trailing backslash if present
+if "%WORKSPACE_DIR:~-1%"=="\" set "WORKSPACE_DIR=%WORKSPACE_DIR:~0,-1%"
+
+echo.
+echo %OK% Workspace will be created at: %WORKSPACE_DIR%
 
 :: ============================================================================
 ::  STEP 1 — Enable long paths
@@ -222,7 +244,7 @@ west --version 2>nul
 echo.
 
 :: ============================================================================
-::  STEP 4 — Clone manifest and initialise workspace
+::  STEP 4 — Copy manifest locally and initialise workspace
 :: ============================================================================
 echo.
 echo %INFO% Step 4/8: Setting up workspace at %WORKSPACE_DIR%...
@@ -233,23 +255,26 @@ if not exist "%WORKSPACE_DIR%" (
 
 cd /d "%WORKSPACE_DIR%"
 
-:: Clone the manifest repo if not already present
-if exist "manifest\.git" (
-    echo %OK% Manifest repo already cloned.
+:: Copy the manifest repo from the local directory where this script lives.
+:: The manifest is the folder containing west.yml (same folder as this .bat).
+if exist "manifest\west.yml" (
+    echo %OK% Manifest already present in workspace.
 ) else (
-    echo %INFO% Cloning manifest repo...
-    git clone "%MANIFEST_REPO_URL%" manifest
-    if !errorlevel! neq 0 (
-        echo %FAIL% Could not clone manifest repo.
-        echo        Check the URL: %MANIFEST_REPO_URL%
-        echo.
-        echo        If you haven't pushed your manifest repo yet, you can:
-        echo          1. Copy the manifest folder manually into %WORKSPACE_DIR%
-        echo          2. Re-run this script
+    echo %INFO% Copying manifest from %MANIFEST_DIR% ...
+    if not exist "%MANIFEST_DIR%\west.yml" (
+        echo %FAIL% west.yml not found next to this batch file.
+        echo        Make sure this .bat is inside the manifest repo folder
+        echo        alongside west.yml.
         pause
         exit /b 1
     )
-    echo %OK% Manifest repo cloned.
+    xcopy "%MANIFEST_DIR%" "%WORKSPACE_DIR%\manifest\" /E /I /H /Y >nul
+    if !errorlevel! neq 0 (
+        echo %FAIL% Could not copy manifest to workspace.
+        pause
+        exit /b 1
+    )
+    echo %OK% Manifest copied to %WORKSPACE_DIR%\manifest
 )
 
 :: Initialise West workspace
