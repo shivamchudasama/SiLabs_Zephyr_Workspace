@@ -1,0 +1,76 @@
+# Copyright (c) 2026 Shivam Chudasama
+# SPDX-License-Identifier: Apache-2.0
+#
+# West manifest — Forest topology for Silicon Labs BLE projects.
+#
+# This is a STANDALONE manifest repo. It contains NO application
+# source code — only the dependency recipe. Each application is its
+# own Git repository, listed as a project below.
+#
+# This manifest imports the Simplicity SDK for Zephyr (zephyr-silabs),
+# which is Silicon Labs' downstream manifest. It provides:
+#   - SiLabs fork of Zephyr (with extra patches for SiLabs hardware)
+#   - SiLabs fork of hal_silabs (with Simplicity SDK / WiSeConnect)
+#   - SiLabs fork of mbedtls (with hardware crypto acceleration)
+#   - Filtered set of upstream modules (no unrelated HALs)
+#
+# Usage:
+#   west init -l https://github.com/shivamchudasama/SiLabs_Zephyr_Workspace.git
+#   west update
+#   west blobs fetch
+#   # First build — specify board and app
+#   west build -p auto -b nrf52840dk/nrf52840 samples/basic/blinky
+#   # Iterative rebuild (board is remembered)
+#   west build
+#   # Rebuild with a clean slate
+#   west build -p always
+#   # Flash after building
+#   west flash
+#
+# Adding a new project:
+#   1. Create a new Git repo for your app (CMakeLists.txt + prj.conf + src/).
+#   2. Push it to your Git server.
+#   3. Add a project entry below under "# ── Your applications".
+#   4. Run `west update` to clone it into the workspace.
+
+manifest:
+   version: "0.13"
+
+   remotes:
+      - name: silabs
+        url-base: https://github.com/SiliconLabsSoftware
+      - name: shivam                         # Zephyr fork GIT URL
+        url-base: https://github.com/shivamchudasama
+                                             # User GIT URL
+
+   defaults:
+      remote: shivam
+
+   projects:
+    # ────────────── Silicon Labs Simplicity SDK for Zephyr ──────────────
+    # This is the SiLabs manifest repo. Importing it pulls in their
+    # fork of Zephyr, hal_silabs, mbedtls, and the other modules
+    # needed for Silicon Labs targets — with non-SiLabs HALs
+    # already filtered out.
+      - name: zephyr-silabs
+        remote: silabs
+        revision: v2025.12.1                 # Latest stable release
+        import: true                         # Import its manifest (west.yml)
+        path: zephyr-silabs
+
+   # ────────────── Your applications ──────────────
+   # Each app is its own Git repo, cloned as a sibling directory.
+   # West pins it at a specific revision for reproducible builds.
+
+      - name: silabs-ble-app
+        revision: main                       # Pin to a tag for releases
+        path: silabs-ble-app                 # Cloned here in the workspace
+
+   # To add more projects, copy the block above:
+   #
+   # - name: my-sensor-app
+   #   revision: v1.0.0
+   #   path: my-sensor-app
+
+   self:
+      path: manifest
