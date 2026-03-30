@@ -158,48 +158,85 @@ echo.
 echo %INFO% Installing 7-Zip...
 winget install -e --id 7zip.7zip --accept-source-agreements --accept-package-agreements
 
-:: ── Refresh PATH ───────────────────────────────────────────────────────────
-:: winget installs may update PATH but the current shell won't see it.
-:: We reload PATH from the registry so newly installed tools are found.
+:: ── Ensure WinGet tools are on PATH ────────────────────────────────────────
+:: winget installs tools into Packages directories and creates shims in a
+:: "Links" folder. The Links folder may already be on PATH (as winget is
+:: supposed to add it), but we ensure it here just in case.
+:: IMPORTANT: We APPEND to the existing PATH — never replace it.
+
 echo.
-echo %INFO% Refreshing PATH...
+echo %INFO% Ensuring WinGet tool directories are on PATH...
 
-for /f "tokens=2*" %%A in (
-    'reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul'
-) do set "SYS_PATH=%%B"
+if exist "%LOCALAPPDATA%\Microsoft\WinGet\Links" (
+    echo !PATH! | find /i "WinGet\Links" >nul
+    if !errorlevel! neq 0 (
+        set "PATH=!PATH!;%LOCALAPPDATA%\Microsoft\WinGet\Links"
+        echo        Added: %LOCALAPPDATA%\Microsoft\WinGet\Links
+    ) else (
+        echo        Already on PATH: WinGet\Links
+    )
+)
 
-for /f "tokens=2*" %%A in (
-    'reg query "HKCU\Environment" /v Path 2^>nul'
-) do set "USR_PATH=%%B"
+if exist "%ProgramFiles%\WinGet\Links" (
+    echo !PATH! | find /i "WinGet\Links" >nul
+    if !errorlevel! neq 0 (
+        set "PATH=!PATH!;%ProgramFiles%\WinGet\Links"
+        echo        Added: %ProgramFiles%\WinGet\Links
+    )
+)
 
-set "PATH=%SYS_PATH%;%USR_PATH%"
-
-:: Also try refreshenv if available (from Chocolatey or other tools)
-call refreshenv >nul 2>&1
+:: dtc is a special case — winget nests it under usr\bin inside the package.
+for /d %%D in ("%LOCALAPPDATA%\Microsoft\WinGet\Packages\oss-winget.dtc_*") do (
+    if exist "%%~D\usr\bin\dtc.exe" (
+        echo !PATH! | find /i "oss-winget.dtc" >nul
+        if !errorlevel! neq 0 (
+            set "PATH=!PATH!;%%~D\usr\bin"
+            echo        Added: %%~D\usr\bin  ^(dtc^)
+        )
+    )
+)
+for /d %%D in ("%ProgramFiles%\WinGet\Packages\oss-winget.dtc_*") do (
+    if exist "%%~D\usr\bin\dtc.exe" (
+        echo !PATH! | find /i "oss-winget.dtc" >nul
+        if !errorlevel! neq 0 (
+            set "PATH=!PATH!;%%~D\usr\bin"
+            echo        Added: %%~D\usr\bin  ^(dtc^)
+        )
+    )
+)
 
 :: ── Verify critical tools ──────────────────────────────────────────────────
 echo.
 echo %INFO% Verifying tools...
 set "TOOLS_OK=1"
+set "MISSING_TOOLS="
 
 for %%T in (cmake ninja gperf python git) do (
     where %%T >nul 2>&1
     if !errorlevel! neq 0 (
-        echo %FAIL% %%T not found on PATH.
+        echo %FAIL% %%T not found.
         set "TOOLS_OK=0"
+        set "MISSING_TOOLS=!MISSING_TOOLS! %%T"
     ) else (
-        echo        %%T ... found
+        for /f "delims=" %%P in ('where %%T 2^>nul') do echo        %%T ... %%P
     )
 )
 
 if "%TOOLS_OK%"=="0" (
     echo.
-    echo %WARN% Some tools are not yet on PATH in this shell session.
-    echo        This is normal after a fresh winget install.
+    echo %FAIL% Could not find:%MISSING_TOOLS%
     echo.
-    echo        Please CLOSE this window, open a NEW Admin command prompt,
-    echo        and re-run this script. The second run will skip packages
-    echo        that are already installed and continue from where it left off.
+    echo        The following directories were searched:
+    echo          - System and User PATH from registry
+    echo          - %LOCALAPPDATA%\Microsoft\WinGet\Links
+    echo          - %ProgramFiles%\WinGet\Links
+    echo.
+    echo        To fix, try uninstalling and reinstalling the missing tool:
+    echo          winget uninstall --id ^<package-id^>
+    echo          winget install -e --id ^<package-id^>
+    echo.
+    echo        Or install manually from the tool's website, making sure to
+    echo        check "Add to PATH" during installation.
     echo.
     pause
     exit /b 1
@@ -209,17 +246,47 @@ echo %OK% All required tools found.
 :: Configure Git for long paths (now that Git is guaranteed installed)
 git config --global core.longpaths true >nul 2>&1
 
+:: ── Refresh Python Scripts directory on PATH ────────────────────────────────
+:: winget-installed Python 3.12 updates the registry PATH but not the current
+:: session's PATH. We ask Python itself where its Scripts folder is and append
+:: it so that pip, west, and other entry-points are immediately reachable.
+echo.
+echo %INFO% Refreshing Python Scripts directory on PATH...
+
+for /f "delims=" %%S in ('python -c "import sys,os; print(os.path.join(sys.prefix,'Scripts'))" 2^>nul') do (
+    if exist "%%~S" (
+        echo !PATH! | find /i "%%~S" >nul
+        if !errorlevel! neq 0 (
+            set "PATH=!PATH!;%%~S"
+            echo        Added: %%~S
+        ) else (
+            echo        Already on PATH: %%~S
+        )
+    )
+)
+
+:: Also add the user-level Scripts folder (pip install --user target)
+for /f "delims=" %%U in ('python -c "import site; print(site.getusersitepackages().replace(\"site-packages\",\"Scripts\"))" 2^>nul') do (
+    if exist "%%~U" (
+        echo !PATH! | find /i "%%~U" >nul
+        if !errorlevel! neq 0 (
+            set "PATH=!PATH!;%%~U"
+            echo        Added: %%~U  ^(user Scripts^)
+        )
+    )
+)
+
 :: ============================================================================
 ::  STEP 3 — Install West
 :: ============================================================================
 echo.
 echo %INFO% Step 3/8: Installing West...
 
-pip show west >nul 2>&1
+python -m pip show west >nul 2>&1
 if %errorlevel% equ 0 (
     echo %OK% West already installed.
 ) else (
-    pip install west
+    python -m pip install west
     if !errorlevel! neq 0 (
         echo %FAIL% West installation failed.
         pause
@@ -330,7 +397,7 @@ if exist "zephyr\scripts\utils\west-packages-pip-install.cmd" (
     )
 ) else if exist "zephyr\scripts\requirements.txt" (
     echo %INFO% Falling back to requirements.txt...
-    pip install -r zephyr\scripts\requirements.txt
+    python -m pip install -r zephyr\scripts\requirements.txt
     if !errorlevel! neq 0 (
         echo %WARN% Some Python packages may have failed. Check output above.
     ) else (
