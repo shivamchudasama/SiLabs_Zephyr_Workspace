@@ -1,11 +1,11 @@
 # Copyright (c) 2026 Shivam Chudasama
 # SPDX-License-Identifier: Apache-2.0
 #
-# West manifest — Forest topology for Silicon Labs BLE projects.
+# West manifest - Forest topology for Silicon Labs BLE projects.
 #
 # This is a STANDALONE manifest repo. It contains NO application
-# source code — only the dependency recipe. Each application is its
-# own Git repository, listed as a project below.
+# source code - only the dependency recipe. Applications live in
+# separate Git repositories and are checked out manually when needed.
 #
 # This manifest imports the Simplicity SDK for Zephyr (zephyr-silabs),
 # which is Silicon Labs' downstream manifest. It provides:
@@ -18,7 +18,7 @@
 #   west init -l https://github.com/shivamchudasama/SiLabs_Zephyr_Workspace.git
 #   west update
 #   west blobs fetch
-#   # First build — specify board and app
+#   # First build - specify board and app
 #   west build -p auto -b nrf52840dk/nrf52840 samples/basic/blinky
 #   # Iterative rebuild (board is remembered)
 #   west build
@@ -27,26 +27,19 @@
 #   # Flash after building
 #   west flash
 #
-# Adding a new project:
+# Adding a new application:
 #   1. Create a new Git repo for your app (CMakeLists.txt + prj.conf + src/).
 #   2. Push it to your Git server.
-#   3. Add a project entry below under "# ── Your applications".
-#   4. Run `west update` to clone it into the workspace.
+#   3. Clone it manually into this workspace when you want to work on it.
 
 manifest:
    version: "0.13"
 
    remotes:
       - name: silabs                         # Name of the remote, used in project entries below
-                                             # as a variable. 
+                                             # as a variable.
         url-base: https://github.com/SiliconLabsSoftware
                                              # SiLabs Zephyr fork GitHub URL.
-      - name: Shivam                         # Name of the remote for your own projects.
-        url-base: https://github.com/shivamchudasama
-                                             # Own GitHub URL.
-
-   defaults:
-      remote: Shivam
 
    projects:
     # ────────────── Silicon Labs Simplicity SDK for Zephyr ──────────────
@@ -59,16 +52,6 @@ manifest:
         revision: v2025.12.1                 # Latest stable release
         import: true                         # Import its manifest (west.yml)
         path: zephyr-silabs                  # Cloned here in the workspace
-                                             # (name of the folder in local machine)
-
-   # ────────────── Your applications ──────────────
-   # Each app is its own Git repo, cloned as a sibling directory.
-   # West pins it at a specific revision for reproducible builds.
-
-      - name: SiLabs_Zephyr_KeyFob           # Name of the project.
-        remote: Shivam                       # Use the "Shivam" remote defined above
-        revision: main                       # Pointing to required branch, tag, in the app repo
-        path: KeyFob_App                     # Cloned here in the workspace
                                              # (name of the folder in local machine)
 
    self:

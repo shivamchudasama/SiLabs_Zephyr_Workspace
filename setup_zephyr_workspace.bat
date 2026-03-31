@@ -17,6 +17,7 @@ setlocal EnableDelayedExpansion
 ::    6. Installs Zephyr Python dependencies
 ::    7. Installs the Zephyr SDK            (via west sdk install)
 ::    8. Downloads Silicon Labs BLE radio blobs
+::    9. Leaves application repos to be cloned manually by the developer
 ::
 ::  Usage:
 ::    Place this .bat file inside your manifest repo (next to west.yml).
@@ -61,8 +62,8 @@ echo %OK% Running with Administrator privileges.
 
 :: ── Ask for workspace directory ────────────────────────────────────────────
 echo.
-echo   The workspace directory is where Zephyr, modules, and your app
-echo   repos will be downloaded. Keep the path SHORT and without spaces
+echo   The workspace directory is where Zephyr, modules, and any app
+echo   repos you clone manually will live. Keep the path SHORT and without spaces
 echo   to avoid build issues.
 echo.
 set /p "WORKSPACE_DIR=   Enter workspace path (e.g. C:\zephyr-ws): "
@@ -358,7 +359,7 @@ if exist ".west" (
     echo %OK% West workspace initialised.
 )
 
-:: Fetch all projects (Zephyr, modules, app repos)
+:: Fetch west-managed projects (Zephyr and SDK/module dependencies)
 echo %INFO% Running west update (this will take a while on first run)...
 west update
 if %errorlevel% neq 0 (
@@ -366,7 +367,7 @@ if %errorlevel% neq 0 (
     pause
     exit /b 1
 )
-echo %OK% All projects fetched.
+echo %OK% West-managed projects fetched.
 
 :: ============================================================================
 ::  STEP 5 — Export Zephyr CMake package
@@ -461,7 +462,8 @@ echo.
 echo   To start developing, open a command prompt and run:
 echo.
 echo     cd %WORKSPACE_DIR%
-echo     west build -b %BOARD% silabs-ble-app
+echo     git clone ^<APP_REPO_URL^> KeyFob_App
+echo     west build -b %BOARD% KeyFob_App
 echo     west flash
 echo.
 
@@ -472,7 +474,7 @@ if defined NEEDS_REBOOT (
 )
 
 echo   To rebuild from scratch:
-echo     west build -b %BOARD% silabs-ble-app -p
+echo     west build -b %BOARD% KeyFob_App -p
 echo.
 echo   To open menuconfig:
 echo     west build -t menuconfig

@@ -30,7 +30,7 @@ that provides several advantages over pointing directly at upstream Zephyr:
 | # | Repo | Contains | Owned by |
 |---|------|----------|----------|
 | 1 | **This repo** (manifest) | `west.yml` only | Platform / infra team |
-| 2 | `silabs-ble-app` | App source (`CMakeLists.txt`, `prj.conf`, `src/`) | App developer |
+| 2 | `KeyFob_App` | App source (`CMakeLists.txt`, `prj.conf`, `src/`) | App developer |
 | 3+ | `my-sensor-app`, etc. | Additional product apps | App developers |
 | — | `zephyr-silabs`, `zephyr`, `hal_silabs`, … | SDK & modules — **managed by West** | Silicon Labs / upstream |
 
@@ -45,13 +45,6 @@ version pinning.
 my-workspace/                   ← west topdir
 ├── .west/
 ├── manifest/                   ← THIS REPO  (west.yml)
-├── silabs-ble-app/             ← REPO 2  (your app, cloned by West)
-│   ├── CMakeLists.txt
-│   ├── prj.conf
-│   ├── boards/
-│   │   └── xg24_dk2601b.overlay
-│   └── src/
-│       └── main.c
 ├── zephyr-silabs/              ← SiLabs manifest repo (imported by West)
 ├── zephyr/                     ← SiLabs fork of Zephyr
 └── modules/
@@ -59,6 +52,9 @@ my-workspace/                   ← west topdir
     ├── hal/cmsis_6/
     └── hal/silabs/             ← SiLabs fork (Simplicity SDK + blobs)
 ```
+
+Application repositories are not managed by west in this workspace.
+Clone them manually as sibling directories, for example `KeyFob_App/`.
 
 ---
 
@@ -103,7 +99,7 @@ git clone <MANIFEST_REPO_URL> manifest
 # 2. Initialise West from the local manifest
 west init -l manifest
 
-# 3. Fetch Zephyr (SiLabs fork), modules, AND your app repo(s)
+# 3. Fetch Zephyr and SDK/module dependencies
 west update
 
 # 4. Export the Zephyr CMake package
@@ -118,10 +114,13 @@ west sdk install -t arm-zephyr-eabi
 # 7. Download Silicon Labs BLE radio blobs
 west blobs fetch hal_silabs
 
-# 8. Build
-west build -b xg24_dk2601b silabs-ble-app
+# 8. Clone your app repo manually into the workspace
+git clone <APP_REPO_URL> KeyFob_App
 
-# 9. Flash
+# 9. Build
+west build -b xg24_dk2601b KeyFob_App
+
+# 10. Flash
 west flash
 ```
 
@@ -134,16 +133,8 @@ automatically.
 
 1. Create a new Git repo with your app code.
 2. Push it to your Git server under the same org/user.
-3. Add it as a project in `west.yml`:
-
-   ```yaml
-   - name: my-new-product
-     revision: main
-     path: my-new-product
-   ```
-
-4. Run `west update`.
-5. Build: `west build -b xg24_dk2601b my-new-product`
+3. Clone it manually as a sibling directory inside the workspace.
+4. Build it directly, for example: `west build -b xg24_dk2601b KeyFob_App`
 
 ---
 
@@ -163,8 +154,8 @@ automatically.
 
 | Task                     | Command                                       |
 | ------------------------ | --------------------------------------------- |
-| Build                    | `west build -b xg24_dk2601b silabs-ble-app`   |
-| Clean rebuild            | `west build -b xg24_dk2601b silabs-ble-app -p`|
+| Build                    | `west build -b xg24_dk2601b KeyFob_App`       |
+| Clean rebuild            | `west build -b xg24_dk2601b KeyFob_App -p`    |
 | Flash                    | `west flash`                                  |
 | Menuconfig               | `west build -t menuconfig`                    |
 | Fetch radio blobs        | `west blobs fetch hal_silabs`                 |
